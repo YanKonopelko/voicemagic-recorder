@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' data:; style-src 'unsafe-inline'; worker-src data:; media-src blob:; connect-src data:; base-uri 'none'; form-action 'none'">
+<title>VoiceMagic · Voice recorder</title>
+<style>
+:root{color-scheme:dark;font:16px/1.55 system-ui,sans-serif;background:#10131e;color:#eef0ff}*{box-sizing:border-box}body{max-width:920px;margin:32px auto;padding:0 22px 40px}h1{font-size:clamp(28px,5vw,40px);line-height:1.15;letter-spacing:-1px;margin:12px 0}h2{font-size:21px;margin:0 0 12px}p{color:#bcc6df;margin:12px 0}.card{background:#1b2133;border:1px solid #34415d;border-radius:16px;padding:24px;margin:20px 0}.row{display:flex;gap:16px;flex-wrap:wrap}.row>label{flex:1;min-width:min(220px,100%)}label{display:block;color:#d0d8ee;font-size:14px;margin:12px 0}input:not([type=checkbox]),select{display:block;background:#111727;border:1px solid #64718e;border-radius:8px;color:white;padding:11px;width:100%;margin-top:6px;font:inherit}button{background:#c4afff;border:0;border-radius:9px;padding:12px 18px;font:600 15px system-ui;color:#201738;cursor:pointer;margin:6px 8px 6px 0;min-height:44px}button.secondary{background:#34415d;color:white}button.danger{background:#603743;color:#ffe5e8}button:disabled{opacity:.45;cursor:default}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,a:focus-visible{outline:3px solid #e3d6ff;outline-offset:3px}#prompt{font-size:clamp(25px,4vw,34px);line-height:1.45;color:white;overflow-wrap:anywhere;margin:12px 0}#pronunciation{font-size:19px;color:#dbcaff}#ipa{font-size:16px;color:#b9c8e3}#status{color:#d0bbff;min-height:28px}audio{width:100%;margin:16px 0}small{color:#b2bfdc}#error{color:#ffb4ba;white-space:pre-wrap}.badge{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#d2c0ff}header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}header label{margin:0;min-width:180px}details>summary{cursor:pointer;font-weight:600}table{width:100%;border-collapse:collapse;font-size:15px}th,td{text-align:left;border-bottom:1px solid #34415d;padding:8px}.scroll{overflow-x:auto}#storage-status{padding:12px 16px;border-left:3px solid #a3dac0;background:#172a29}#storage-status.warning{border-color:#f2c078;background:#342d24}#level{width:100%;height:14px;accent-color:#a3dac0}[hidden]{display:none!important}.actions{margin-top:12px}.notice,.footer{font-size:14px}.check{display:flex;gap:10px;align-items:flex-start}.check input{margin-top:5px;flex-shrink:0}#counter{display:block}#take-list{max-width:100%}@media(max-width:520px){body{padding:0 14px 24px;margin-top:20px}.card{padding:18px}th,td{padding:7px 5px}button{padding:12px 14px}}
+a{color:#d0bbff} #wizard-step{color:#b2bfdc;font-size:14px} #screen-identity{max-width:600px} #screen-thanks a{font-size:clamp(16px,4vw,24px);overflow-wrap:anywhere}</style>
+</head>
+<body>
+<header><div class="badge">VoiceMagic · <span data-i18n="sharedModel"></span></div><span id="wizard-step" aria-live="polite"></span></header>
+<h1 data-i18n="title"></h1>
+<main>
+<section id="screen-identity" class="card"><h2 data-i18n="wizardIdentity"></h2>
+<label><span data-i18n="interfaceLanguage"></span><select id="ui-language"><option value="en">English</option><option value="ru">Русский</option><option value="uk">Українська</option><option value="nb">Norsk (bokmål)</option></select></label>
+<label><span data-i18n="speakerLabel"></span><input id="speaker" autocomplete="off" maxlength="80" spellcheck="false"></label><small data-i18n="identityHelp"></small><div class="actions"><button id="wizard-continue" data-i18n="next"></button></div></section>
+<section id="screen-intro" class="card" hidden><h2 data-i18n="wizardAbout"></h2><p data-i18n="wizardProject"></p><p data-i18n="wizardInstructions"></p>
+<label><span data-i18n="nativeLanguage"></span><input id="language" maxlength="100" data-placeholder="languagePlaceholder"></label>
+<label><span data-i18n="environmentLabel"></span><input id="environment" maxlength="500" data-placeholder="environmentPlaceholder"></label>
+<label class="check"><input type="checkbox" id="consent"><span data-i18n="consent"></span></label>
+<button id="wizard-back" class="secondary" data-i18n="previous"></button><button id="wizard-start" data-i18n="wizardStart"></button></section>
+<div id="screen-recording" hidden><section class="card" aria-labelledby="task-title"><h2 id="task-title" data-i18n="wizardRecord"></h2><div class="row" hidden><label><span data-i18n="taskSet"></span><select id="group"><option value="words" data-i18n="wordsGroup"></option><option value="chains" data-i18n="chainsGroup"></option><option value="speech" data-i18n="speechGroup"></option><option value="noise" data-i18n="noiseGroup"></option></select></label><label id="pace-label" hidden><span data-i18n="paceLabel"></span><select id="pace"><option value="normal" data-i18n="normalPace"></option><option value="joined" data-i18n="joinedPace"></option></select></label><label id="duration-label" hidden><span data-i18n="durationLabel"></span><select id="duration"><option value="60">60 s</option><option value="90">90 s</option><option value="120">120 s</option></select></label></div><small id="counter"></small><div id="prompt"></div><div id="pronunciation"></div><div id="ipa"></div><p id="hint"></p><div id="status" role="status" aria-live="polite"></div><meter id="level" min="0" max="1" value="0" data-aria="levelLabel"></meter><div class="actions"><button id="record" data-i18n="record"></button><button id="stop" class="secondary" disabled data-i18n="stop"></button></div><div id="review" hidden><p data-i18n="inlineReview"></p><audio id="playback" hidden preload="metadata" data-aria="playbackLabel"></audio><button id="replay" class="secondary" data-i18n="replay" disabled></button><button id="verify" data-i18n="inlineConfirm" disabled></button><button id="exclude" class="secondary" data-i18n="inlineCancel" disabled></button></div><button id="previous" class="secondary" data-i18n="previous"></button><button id="next" class="secondary" data-i18n="next"></button></section><details class="card" id="guide"><summary data-i18n="guideTitle"></summary><p data-i18n="pronunciationGuide"></p><p data-i18n="cancelGuide"></p><div class="scroll"><table><thead><tr><th data-i18n="rune"></th><th data-i18n="say"></th><th>IPA</th></tr></thead><tbody id="rune-table"></tbody></table></div><p class="notice" data-i18n="ipaGuide"></p></details>
+
+<button id="wizard-back-intro" class="secondary" data-i18n="wizardAbout"></button><button id="backup" class="secondary" data-i18n="download"></button></div>
+<section id="screen-thanks" class="card" hidden><h2 data-i18n="wizardThanks"></h2><p data-i18n="wizardThankYou"></p><p data-i18n="wizardSend"></p><p><a href="mailto:konopelkoyan@gmail.com">konopelkoyan@gmail.com</a></p><button id="download" disabled data-i18n="download"></button><p data-i18n="wizardAttach"></p><button id="wizard-back-recordings" class="secondary" data-i18n="wizardReturn"></button></section>
+</main><div hidden aria-hidden="true"><b id="summary"></b><select id="take-list"></select><p id="take-details"></p><select id="kind"><option value="command">command</option><option value="speech">speech</option><option value="noise">noise</option></select><input id="transcript"><div id="transcript-buttons"></div><button id="delete-take"></button><button id="clear"></button></div><p id="storage-status" role="status"></p><p id="error" role="alert"></p>
+<script>
+'use strict';
+// Translate instructions, never the sounds of the approved rune vocabulary.
+const messages = {
+  en: {
+    durationOption:'{seconds} s',
+    playbackLabel:'Play back the selected recording',
+    sharedModel:'one shared model', interfaceLanguage:'Interface language', title:'Help the runes hear you',
+    intro:'Record short commands and everyday sounds for a shared VoiceMagic model. Open this file in a desktop browser: no installation, hosting or internet is needed. Nothing is uploaded automatically.',
+    guideTitle:'How to pronounce the runes · 14 commands',
+    pronunciationGuide:'The rune names stay the same in every language. Say both syllables clearly in your natural voice, with pure vowels rather than diphthongs. In the reading hints, ah is like the vowel in father, oo like food, and ee like see, but do not stretch them. A hyphen separates syllables, not words. In a spell, say each whole rune in order.',
+    cancelGuide:'Otmena and Stop are Russian cancellation commands: say their sounds, not an English translation. In aht-MYEH-nuh, stress MYEH and soften the m, as if a very short y follows it. Stop has a short o; do not say stowp. Your natural accent is welcome. Do not whisper or force your voice.',
+    ipaGuide:'IPA is an optional sound reference. Dots mark syllable boundaries. No fixed stress is required for the invented rune names; do not deliberately reduce a to uh. Capitals in cancellation hints mark stress.',
+    rune:'Rune / command', say:'Say it like this', participantTitle:'1 · About you', speakerLabel:'Participant ID', nativeLanguage:'Native language(s)', languagePlaceholder:'For example: English, Spanish', identityHelp:'Keep this anonymous ID for every session and device. Copy it somewhere safe; do not enter your real name. It groups recordings for evaluation, not a personal voice profile.',
+    environmentLabel:'Microphone, room and background noise', environmentPlaceholder:'For example: USB headset, quiet bedroom', consent:'I agree to recording my voice and sharing the exported recordings with the project developer for training and evaluating the shared VoiceMagic model. Storage is local until I send the archive myself.',
+    taskTitle:'2 · Record a task', taskSet:'Task set', wordsGroup:'14 individual commands', chainsGroup:'64 spells', speechGroup:'Everyday speech', noiseGroup:'Noise and blowing', paceLabel:'Spell round', normalPace:'Round 1 · natural pauses', joinedPace:'Round 2 · continuous speech', durationLabel:'Maximum recording length',
+    counter:'Task {index} / {total} · reviewed in this set: {done}', normalHint:'Read the spell at a natural pace with short gaps between runes. Press Record first, then Stop recording when finished. Maximum 15 seconds.', joinedHint:'Say the whole spell fluently, without artificial pauses between runes. Keep every syllable. Maximum 15 seconds.', wordHint:'Press Record, say the command shown above, then press Stop recording. Maximum 15 seconds.', backgroundHint:'Press Record first, then follow the task. Stop when finished. You may record up to {limit} seconds; choose a longer limit for extended background samples.',
+    record:'Record', stop:'Stop recording', previous:'← Previous', next:'Next →', levelLabel:'Microphone level', idle:'Microphone off', requesting:'Waiting for microphone permission…', recording:'● Recording · {seconds} / {limit} s', finishing:'Saving recording…', saved:'Recording saved. Listen from beginning to end, correct the label, then confirm.',
+    recordingsTitle:'3 · Review and export', takeLabel:'Recording to review', reviewHelp:'Listen to every take from beginning to end. Label what you actually said, including mistakes. You can return to any earlier take using this list.', kindLabel:'Recording type', commandKind:'Command', speechKind:'Everyday speech', noiseKind:'Noise', transcriptLabel:'Which commands did you actually say?', transcriptHelp:'Enter rune names (Latin or Cyrillic), separated by spaces. The small buttons only edit the transcript; they never record or apply game commands. Leave this field empty for ordinary speech/noise. Exclude unintelligible takes.',
+    verify:'Confirm label', exclude:'Exclude take', deleteTake:'Delete take', download:'Download recordings ZIP', clear:'Delete all local takes', exportHelp:'The ZIP includes WAV audio and labels, including pending and excluded takes. Send it to the developer using your agreed method. Only verified, uninterrupted takes are eligible for training. Download a backup before closing or switching browsers.',
+    footer:'Start with individual commands, then the two spell rounds, speech and noise. Take breaks. Do not record private conversations or anyone without their consent. A complete collection takes longer than a short session. Opening this page never starts the microphone.',
+    storageReady:'Recordings are saved on this device in this browser. Download a ZIP backup too: clearing browser data or moving this file can make local recordings unavailable.', storageUnavailable:'Automatic local saving is unavailable. Keep this page open and download your ZIP before closing it.', storageFailed:'Local saving failed (possibly storage is full). Your takes are still in this page; download the ZIP now before closing.', restored:'Restored {count} recordings from this browser. Microphone off.',
+    summary:'Takes: {total} · reviewed: {verified} · excluded: {excluded} · pending: {pending}', takeOption:'{index}. {name} · {seconds} s · {review}', pending:'pending', verified:'reviewed', excluded:'excluded', detail:'Participant: {speaker} · {language} · {device}', interruptedDetail:'Interrupted take: exclude it and record again.',
+    verifiedStatus:'Label confirmed. Select Next to continue.', excludedStatus:'Take excluded. It remains in the archive, marked as excluded.', deletedStatus:'Recording deleted.', clearedStatus:'All local recordings deleted. Downloaded ZIP files are unchanged.', confirmDelete:'Delete this recording from this page and local browser storage?', confirmClear:'Delete ALL recordings from this page and local browser storage? Download your ZIP first. This cannot be undone.',
+    invalidSpeaker:'Enter an ID using letters, numbers, - or _ (up to 80 characters).', consentRequired:'Consent is required before recording.', languageRequired:'Enter your native language(s).', unsupported:'This browser cannot record audio here. Open recorder.html in a current desktop Chrome or Edge. If file access is blocked, use the optional local launcher from the archive.', permissionDenied:'Microphone access was denied. Allow it in the browser and system privacy settings, then press Record again.', noMicrophone:'No microphone was found. Connect one and try again.', microphoneBusy:'The microphone could not be opened. Check system permissions and whether another app is using it.', unknownRune:'Unknown command: {word}. Use the displayed rune names.', kindMismatch:'A command needs at least one rune. Ordinary speech and noise must have an empty rune transcript.', listenFirst:'Listen to the entire recording before confirming the label.', invalidTake:'An interrupted or empty take cannot be confirmed. Exclude it and record again.', hiddenInterruption:'Page hidden during recording', deviceInterruption:'Microphone disconnected or audio suspended', noAudio:'No audio was captured. Check the microphone and record again.', exportPending:'Export includes {count} pending takes. Review them before sending if possible.', exportDone:'ZIP downloaded. Check your Downloads folder before deleting any recordings.', reviewChanged:'Label edited. Listen and confirm it again.',
+    speechTasks:['Talk about your day in your native language for 30–60 seconds, without intentional rune commands.','Read an ordinary paragraph in your native language. Do not deliberately insert rune commands.','Say these everyday words: tsunami, binoculars, banana, summary, taboo. Then continue ordinary speech in your native language; do not pronounce isolated rune commands.','Record public or consented speech or music from speakers at a normal volume. No private conversations.'],
+    noiseTasks:['Room silence — at least 30 seconds.','Blow towards the microphone a few times with varying strength, without speaking. Do not touch it with your lips; stop if uncomfortable.','Breathing and exhaling — 20 seconds, without speech.','Clothing rustle and headset movement, without speech.','Type and move the mouse for 20 seconds, without speech.','Fan or household background noise — at least 30 seconds, without speech.']
+  },
+  ru: {
+    durationOption:'{seconds} с',
+    playbackLabel:'Прослушать выбранную запись',
+    sharedModel:'общая модель', interfaceLanguage:'Язык интерфейса', title:'Помогите рунам услышать вас',
+    intro:'Запишите короткие команды и обычные звуки для общей модели VoiceMagic. Откройте этот файл в браузере на компьютере: установка, хостинг и интернет не нужны. Ничего не отправляется автоматически.',
+    guideTitle:'Как произносить руны · 14 команд', pronunciationGuide:'Названия рун одинаковы на всех языках. Произносите оба слога разборчиво обычным голосом, сохраняя гласные а, у и и. Дефис в подсказке разделяет слоги, а не слова. Не растягивайте гласные специально. В заклинании произносите каждую руну целиком по порядку.',
+    cancelGuide:'«Отмена» и «Стоп» — команды отмены. Произносите их по-русски: от-ме́-на, стоп. Естественный акцент допустим. Не шепчите и не напрягайте голос.', ipaGuide:'IPA — необязательная фонетическая подсказка. Точки разделяют слоги. Для придуманных названий рун фиксированное ударение не требуется; не превращайте намеренно «а» в неясный звук. В команде «Отмена» ударение на «ме».',
+    rune:'Руна / команда', say:'Чтение по слогам', participantTitle:'1 · Об участнике', speakerLabel:'ID участника', nativeLanguage:'Родной язык или языки', languagePlaceholder:'Например: русский, английский', identityHelp:'Используйте этот анонимный ID во всех сессиях и на всех устройствах. Сохраните его отдельно; не указывайте ФИО. Он нужен для разделения данных при проверке, а не для личного голосового профиля.',
+    environmentLabel:'Микрофон, комната и фоновый шум', environmentPlaceholder:'Например: USB-гарнитура, тихая спальня', consent:'Я согласен на запись голоса и передачу скачанных записей разработчику для обучения и проверки общей модели VoiceMagic. Данные хранятся локально, пока я сам не передам архив.',
+    taskTitle:'2 · Запишите задание', taskSet:'Набор заданий', wordsGroup:'14 отдельных команд', chainsGroup:'64 заклинания', speechGroup:'Обычная речь', noiseGroup:'Шум и дуновение', paceLabel:'Круг заклинаний', normalPace:'Круг 1 · естественные паузы', joinedPace:'Круг 2 · слитная речь', durationLabel:'Максимальная длина записи',
+    counter:'Задание {index} / {total} · проверено в наборе: {done}', normalHint:'Прочитайте заклинание в обычном темпе с небольшими промежутками между рунами. Сначала нажмите «Записать», в конце — «Закончить». Максимум 15 секунд.', joinedHint:'Произнесите заклинание слитно, без искусственных пауз между рунами, сохраняя все слоги. Максимум 15 секунд.', wordHint:'Нажмите «Записать», произнесите показанную команду и нажмите «Закончить». Максимум 15 секунд.', backgroundHint:'Сначала нажмите «Записать», затем выполните задание. В конце нажмите «Закончить». Максимум {limit} секунд; для длительного фона выберите больший предел.',
+    record:'Записать', stop:'Закончить', previous:'← Назад', next:'Дальше →', levelLabel:'Уровень микрофона', idle:'Микрофон выключен', requesting:'Ожидание доступа к микрофону…', recording:'● Запись · {seconds} / {limit} с', finishing:'Сохранение записи…', saved:'Запись сохранена. Прослушайте её целиком, исправьте разметку и подтвердите.',
+    recordingsTitle:'3 · Проверьте и скачайте', takeLabel:'Запись для проверки', reviewHelp:'Прослушайте каждую попытку от начала до конца. Размечайте то, что действительно произнесли, включая оговорки. К любой ранней попытке можно вернуться через этот список.', kindLabel:'Тип записи', commandKind:'Команда', speechKind:'Обычная речь', noiseKind:'Шум', transcriptLabel:'Какие команды вы действительно произнесли?', transcriptHelp:'Введите названия рун кириллицей или латиницей через пробел. Маленькие кнопки только редактируют разметку: они не записывают звук и не применяют игровые команды. Для обычной речи и шума оставьте поле пустым. Неразборчивую попытку исключите.',
+    verify:'Подтвердить разметку', exclude:'Исключить попытку', deleteTake:'Удалить попытку', download:'Скачать ZIP записей', clear:'Удалить все локальные записи', exportHelp:'В ZIP входят WAV и разметка, включая непроверенные и исключённые попытки. Передайте его разработчику согласованным способом. Для обучения пригодны только проверенные непрерванные попытки. Скачайте резервную копию перед закрытием или сменой браузера.',
+    footer:'Начните с отдельных команд, затем запишите два круга заклинаний, речь и шум. Делайте перерывы. Не записывайте частные разговоры и других людей без их согласия. Полный набор требует больше времени, чем короткая сессия. Открытие страницы никогда не включает микрофон.',
+    storageReady:'Записи сохраняются на этом устройстве в этом браузере. Скачивайте и резервный ZIP: очистка данных браузера или перенос файла могут сделать локальные записи недоступными.', storageUnavailable:'Автоматическое локальное сохранение недоступно. Держите страницу открытой и скачайте ZIP до её закрытия.', storageFailed:'Локальное сохранение не удалось (возможно, нет места). Записи пока есть на странице; скачайте ZIP сейчас, до закрытия.', restored:'Восстановлено записей из браузера: {count}. Микрофон выключен.',
+    summary:'Попыток: {total} · проверено: {verified} · исключено: {excluded} · не проверено: {pending}', takeOption:'{index}. {name} · {seconds} с · {review}', pending:'не проверено', verified:'проверено', excluded:'исключено', detail:'Участник: {speaker} · {language} · {device}', interruptedDetail:'Прерванная попытка: исключите её и запишите заново.',
+    verifiedStatus:'Разметка подтверждена. Нажмите «Дальше», чтобы продолжить.', excludedStatus:'Попытка исключена. В архиве она останется с отметкой об исключении.', deletedStatus:'Запись удалена.', clearedStatus:'Все локальные записи удалены. Скачанные ZIP не изменились.', confirmDelete:'Удалить эту запись со страницы и из локального хранилища браузера?', confirmClear:'Удалить ВСЕ записи со страницы и из локального хранилища браузера? Сначала скачайте ZIP. Это действие нельзя отменить.',
+    invalidSpeaker:'Укажите ID: буквы, цифры, - или _, до 80 знаков.', consentRequired:'Для записи необходимо согласие участника.', languageRequired:'Укажите родной язык или языки.', unsupported:'В этом браузере запись здесь недоступна. Откройте recorder.html в актуальном Chrome или Edge на компьютере. Если доступ к файлу заблокирован, используйте дополнительный локальный запуск из архива.', permissionDenied:'Доступ к микрофону запрещён. Разрешите его в браузере и настройках системы, затем снова нажмите «Записать».', noMicrophone:'Микрофон не найден. Подключите его и повторите попытку.', microphoneBusy:'Не удалось открыть микрофон. Проверьте разрешения системы и не занят ли он другим приложением.', unknownRune:'Неизвестная команда: {word}. Используйте показанные названия рун.', kindMismatch:'Для команды укажите хотя бы одну руну. Для обычной речи и шума поле рун должно быть пустым.', listenFirst:'Перед подтверждением прослушайте запись целиком.', invalidTake:'Прерванную или пустую попытку подтвердить нельзя. Исключите её и запишите заново.', hiddenInterruption:'Страница скрыта во время записи', deviceInterruption:'Микрофон отключён или звук приостановлен', noAudio:'Звук не записался. Проверьте микрофон и запишите заново.', exportPending:'В архиве есть непроверенные попытки: {count}. По возможности проверьте их перед отправкой.', exportDone:'ZIP скачан. Проверьте папку загрузок, прежде чем удалять записи.', reviewChanged:'Разметка изменена. Прослушайте и подтвердите её снова.',
+    speechTasks:['Расскажите о своём дне на родном языке в течение 30–60 секунд, без намеренных команд рун.','Прочитайте обычный абзац на родном языке. Не вставляйте команды рун специально.','Произнесите обычные слова: бумага, сумка, цунами, минута, банан, таможня. Затем продолжите обычную речь на родном языке, без отдельных команд рун.','Запишите публичную речь, речь с согласия говорящих или музыку из колонок при обычной громкости. Без частных разговоров.'],
+    noiseTasks:['Тишина комнаты — не менее 30 секунд.','Несколько раз подуйте в сторону микрофона с разной силой, без речи. Не касайтесь его губами; прекратите, если некомфортно.','Дыхание и выдохи — 20 секунд, без речи.','Шорох одежды и движение гарнитуры, без речи.','Печатайте и двигайте мышью 20 секунд, без речи.','Вентилятор или бытовой фон — не менее 30 секунд, без речи.']
+  },
+  uk: {
+    durationOption:'{seconds} с',
+    playbackLabel:'Прослухати вибраний запис',
+    sharedModel:'спільна модель', interfaceLanguage:'Мова інтерфейсу', title:'Допоможіть рунам почути вас',
+    intro:'Запишіть короткі команди та повсякденні звуки для спільної моделі VoiceMagic. Відкрийте цей файл у браузері на комп’ютері: установлення, хостинг та інтернет не потрібні. Нічого не надсилається автоматично.',
+    guideTitle:'Як вимовляти руни · 14 команд', pronunciationGuide:'Назви рун однакові всіма мовами. Чітко вимовляйте обидва склади звичайним голосом. У підказках «і» означає саме українське і, а не и; у та а вимовляйте звично, не розтягуйте їх навмисно. Дефіс відділяє склади, а не слова. У заклинанні вимовляйте кожну руну повністю, по черзі.',
+    cancelGuide:'«Отмена» та «Стоп» — російські команди скасування. Вимовляйте їхні звуки, не перекладайте: ат-мє́-на (з м’яким м), стоп. Природний акцент допустимий. Не шепочіть і не напружуйте голос.', ipaGuide:'IPA — необов’язкова фонетична підказка. Крапки відділяють склади. Для вигаданих назв рун фіксованого наголосу не потрібно; не змінюйте навмисно чітке а на невиразний звук. У команді «Отмена» наголос на «ме».',
+    rune:'Руна / команда', say:'Вимова за складами', participantTitle:'1 · Про учасника', speakerLabel:'ID учасника', nativeLanguage:'Рідна мова або мови', languagePlaceholder:'Наприклад: українська, англійська', identityHelp:'Використовуйте цей анонімний ID у всіх сесіях і на всіх пристроях. Збережіть його окремо; не вказуйте справжнє ім’я. Він потрібен для розподілу даних під час перевірки, а не для особистого голосового профілю.',
+    environmentLabel:'Мікрофон, кімната та фоновий шум', environmentPlaceholder:'Наприклад: USB-гарнітура, тиха спальня', consent:'Я погоджуюся на запис голосу та передачу завантажених записів розробнику для навчання й перевірки спільної моделі VoiceMagic. Дані зберігаються локально, доки я самостійно не передам архів.',
+    taskTitle:'2 · Запишіть завдання', taskSet:'Набір завдань', wordsGroup:'14 окремих команд', chainsGroup:'64 заклинання', speechGroup:'Звичайне мовлення', noiseGroup:'Шум і дмухання', paceLabel:'Коло заклинань', normalPace:'Коло 1 · природні паузи', joinedPace:'Коло 2 · злите мовлення', durationLabel:'Максимальна тривалість запису',
+    counter:'Завдання {index} / {total} · перевірено в наборі: {done}', normalHint:'Прочитайте заклинання у звичайному темпі з невеликими проміжками між рунами. Спершу натисніть «Записати», наприкінці — «Завершити». Максимум 15 секунд.', joinedHint:'Вимовте заклинання злито, без штучних пауз між рунами, зберігаючи всі склади. Максимум 15 секунд.', wordHint:'Натисніть «Записати», вимовте показану команду та натисніть «Завершити». Максимум 15 секунд.', backgroundHint:'Спершу натисніть «Записати», потім виконайте завдання. Наприкінці натисніть «Завершити». Максимум {limit} секунд; для тривалого фону виберіть більшу межу.',
+    record:'Записати', stop:'Завершити', previous:'← Назад', next:'Далі →', levelLabel:'Рівень мікрофона', idle:'Мікрофон вимкнено', requesting:'Очікування доступу до мікрофона…', recording:'● Запис · {seconds} / {limit} с', finishing:'Збереження запису…', saved:'Запис збережено. Прослухайте його повністю, виправте розмітку та підтвердьте.',
+    recordingsTitle:'3 · Перевірте й завантажте', takeLabel:'Запис для перевірки', reviewHelp:'Прослухайте кожну спробу від початку до кінця. Розмічайте те, що справді вимовили, зокрема обмовки. До попередніх спроб можна повернутися через цей список.', kindLabel:'Тип запису', commandKind:'Команда', speechKind:'Звичайне мовлення', noiseKind:'Шум', transcriptLabel:'Які команди ви насправді вимовили?', transcriptHelp:'Введіть назви рун кирилицею або латиницею через пробіл. Маленькі кнопки лише редагують розмітку: вони не записують звук і не застосовують ігрові команди. Для звичайного мовлення й шуму залиште поле порожнім. Нерозбірливу спробу виключіть.',
+    verify:'Підтвердити розмітку', exclude:'Виключити спробу', deleteTake:'Видалити спробу', download:'Завантажити ZIP записів', clear:'Видалити всі локальні записи', exportHelp:'ZIP містить WAV і розмітку, зокрема неперевірені та виключені спроби. Передайте його розробнику узгодженим способом. Для навчання придатні лише перевірені неперервані спроби. Завантажте резервну копію перед закриттям або зміною браузера.',
+    footer:'Почніть з окремих команд, потім запишіть два кола заклинань, мовлення та шум. Робіть перерви. Не записуйте приватні розмови та інших людей без їхньої згоди. Повний набір потребує більше часу, ніж коротка сесія. Відкриття сторінки ніколи не вмикає мікрофон.',
+    storageReady:'Записи зберігаються на цьому пристрої в цьому браузері. Завантажуйте також резервний ZIP: очищення даних браузера або переміщення файлу можуть зробити локальні записи недоступними.', storageUnavailable:'Автоматичне локальне збереження недоступне. Тримайте сторінку відкритою та завантажте ZIP до її закриття.', storageFailed:'Локальне збереження не вдалося (можливо, бракує місця). Записи поки є на сторінці; завантажте ZIP зараз, до закриття.', restored:'Відновлено записів із браузера: {count}. Мікрофон вимкнено.',
+    summary:'Спроб: {total} · перевірено: {verified} · виключено: {excluded} · не перевірено: {pending}', takeOption:'{index}. {name} · {seconds} с · {review}', pending:'не перевірено', verified:'перевірено', excluded:'виключено', detail:'Учасник: {speaker} · {language} · {device}', interruptedDetail:'Перервана спроба: виключіть її та запишіть заново.',
+    verifiedStatus:'Розмітку підтверджено. Натисніть «Далі», щоб продовжити.', excludedStatus:'Спробу виключено. В архіві вона залишиться з позначкою про виключення.', deletedStatus:'Запис видалено.', clearedStatus:'Усі локальні записи видалено. Завантажені ZIP не змінилися.', confirmDelete:'Видалити цей запис зі сторінки та локального сховища браузера?', confirmClear:'Видалити ВСІ записи зі сторінки та локального сховища браузера? Спершу завантажте ZIP. Цю дію неможливо скасувати.',
+    invalidSpeaker:'Укажіть ID: літери, цифри, - або _, до 80 знаків.', consentRequired:'Для запису потрібна згода учасника.', languageRequired:'Укажіть рідну мову або мови.', unsupported:'У цьому браузері запис тут недоступний. Відкрийте recorder.html в актуальному Chrome або Edge на комп’ютері. Якщо доступ до файлу заблоковано, скористайтеся додатковим локальним запуском з архіву.', permissionDenied:'Доступ до мікрофона заборонено. Дозвольте його в браузері та налаштуваннях системи, потім знову натисніть «Записати».', noMicrophone:'Мікрофон не знайдено. Під’єднайте його та спробуйте знову.', microphoneBusy:'Не вдалося відкрити мікрофон. Перевірте дозволи системи та чи не використовує його інша програма.', unknownRune:'Невідома команда: {word}. Використовуйте показані назви рун.', kindMismatch:'Для команди вкажіть хоча б одну руну. Для звичайного мовлення й шуму поле рун має бути порожнім.', listenFirst:'Перед підтвердженням прослухайте запис повністю.', invalidTake:'Перервану або порожню спробу підтвердити не можна. Виключіть її та запишіть заново.', hiddenInterruption:'Сторінку приховано під час запису', deviceInterruption:'Мікрофон від’єднано або звук призупинено', noAudio:'Звук не записався. Перевірте мікрофон і запишіть заново.', exportPending:'В архіві є неперевірені спроби: {count}. За можливості перевірте їх перед надсиланням.', exportDone:'ZIP завантажено. Перевірте теку завантажень, перш ніж видаляти записи.', reviewChanged:'Розмітку змінено. Прослухайте й підтвердьте її знову.',
+    speechTasks:['Розкажіть про свій день рідною мовою протягом 30–60 секунд, без навмисних команд рун.','Прочитайте звичайний абзац рідною мовою. Не вставляйте команди рун навмисно.','Вимовте звичайні слова: папуга, сумка, цунамі, хвилина, банан, тамування. Потім продовжте звичайне мовлення рідною мовою, без окремих команд рун.','Запишіть публічне мовлення, мовлення за згодою учасників або музику з колонок за звичайної гучності. Без приватних розмов.'],
+    noiseTasks:['Тиша в кімнаті — щонайменше 30 секунд.','Кілька разів подмухайте в бік мікрофона з різною силою, без мовлення. Не торкайтеся його губами; припиніть, якщо некомфортно.','Дихання та видихи — 20 секунд, без мовлення.','Шурхіт одягу та рух гарнітури, без мовлення.','Друкуйте й рухайте мишею 20 секунд, без мовлення.','Вентилятор або побутовий фон — щонайменше 30 секунд, без мовлення.']
+  },
+  nb: {
+    durationOption:'{seconds} s',
+    playbackLabel:'Spill av valgt opptak',
+    sharedModel:'én felles modell', interfaceLanguage:'Grensesnittspråk', title:'Hjelp runene med å høre deg',
+    intro:'Ta opp korte kommandoer og hverdagslyder for en felles VoiceMagic-modell. Åpne denne filen i en nettleser på datamaskinen: du trenger verken installasjon, hosting eller internett. Ingenting lastes opp automatisk.',
+    guideTitle:'Slik uttaler du runene · 14 kommandoer', pronunciationGuide:'Runenavnene er de samme på alle språk. Uttal begge stavelsene tydelig med vanlig stemme. I uttalehjelpen betyr o den rene o-lyden som i «bok», ikke å-lyden som i «topp». Bruk i som i «bil» og a som i «tak», men ikke trekk ut vokalene. Ikke bruk den norske u-lyden. Bindestreken deler stavelser, ikke ord. Si hvert helt runenavn i riktig rekkefølge.',
+    cancelGuide:'Otmena og Stop er russiske avbrytkommandoer: uttal lydene, ikke oversett ordene. I at-MJE-na ligger trykket på MJE; m uttales mykt, med en kort j-lignende overgang. I stopp brukes kort å-lyd, som i norsk «stopp». Naturlig aksent er helt greit. Ikke hvisk eller press stemmen.', ipaGuide:'IPA er en valgfri lydveiledning. Punktum markerer stavelsesgrenser. De oppdiktede runenavnene krever ikke fast trykk; ikke gjør a til en utydelig vokal med vilje. Store bokstaver i avbrytkommandoen markerer trykk.',
+    rune:'Rune / kommando', say:'Uttalehjelp', participantTitle:'1 · Om deg', speakerLabel:'Deltaker-ID', nativeLanguage:'Morsmål', languagePlaceholder:'For eksempel: norsk, engelsk', identityHelp:'Bruk denne anonyme ID-en i alle økter og på alle enheter. Ta vare på den et annet sted; ikke oppgi ditt virkelige navn. ID-en brukes til å dele inn data ved evaluering, ikke til en personlig stemmeprofil.',
+    environmentLabel:'Mikrofon, rom og bakgrunnsstøy', environmentPlaceholder:'For eksempel: USB-hodesett, stille soverom', consent:'Jeg samtykker til at stemmen min tas opp, og at jeg deler de eksporterte opptakene med utvikleren for å trene og evaluere den felles VoiceMagic-modellen. Data lagres lokalt til jeg selv sender arkivet.',
+    taskTitle:'2 · Ta opp en oppgave', taskSet:'Oppgavesett', wordsGroup:'14 enkeltkommandoer', chainsGroup:'64 trylleformler', speechGroup:'Vanlig tale', noiseGroup:'Støy og blåsing', paceLabel:'Runde med trylleformler', normalPace:'Runde 1 · naturlige pauser', joinedPace:'Runde 2 · sammenhengende tale', durationLabel:'Maksimal opptakslengde',
+    counter:'Oppgave {index} / {total} · kontrollert i settet: {done}', normalHint:'Les trylleformelen i vanlig tempo med korte pauser mellom runene. Trykk først på «Ta opp», og deretter på «Stopp opptak» når du er ferdig. Maksimalt 15 sekunder.', joinedHint:'Si hele trylleformelen flytende uten kunstige pauser mellom runene. Behold alle stavelsene. Maksimalt 15 sekunder.', wordHint:'Trykk på «Ta opp», si kommandoen som vises, og trykk på «Stopp opptak». Maksimalt 15 sekunder.', backgroundHint:'Trykk først på «Ta opp», og følg deretter oppgaven. Stopp når du er ferdig. Maksimalt {limit} sekunder; velg en lengre grense for lange bakgrunnsopptak.',
+    record:'Ta opp', stop:'Stopp opptak', previous:'← Forrige', next:'Neste →', levelLabel:'Mikrofonnivå', idle:'Mikrofon av', requesting:'Venter på tilgang til mikrofonen…', recording:'● Opptak · {seconds} / {limit} s', finishing:'Lagrer opptaket…', saved:'Opptaket er lagret. Lytt fra start til slutt, rett merkingen og bekreft.',
+    recordingsTitle:'3 · Kontroller og eksporter', takeLabel:'Opptak som skal kontrolleres', reviewHelp:'Lytt til hvert opptak fra start til slutt. Merk det du faktisk sa, også hvis du sa feil. Du kan gå tilbake til tidligere opptak i denne listen.', kindLabel:'Opptakstype', commandKind:'Kommando', speechKind:'Vanlig tale', noiseKind:'Støy', transcriptLabel:'Hvilke kommandoer sa du faktisk?', transcriptHelp:'Skriv runenavnene med latinske eller kyrilliske bokstaver, atskilt med mellomrom. De små knappene redigerer bare transkripsjonen; de tar ikke opp lyd eller utfører spillkommandoer. La feltet stå tomt for vanlig tale og støy. Utelat uforståelige opptak.',
+    verify:'Bekreft merking', exclude:'Utelat opptak', deleteTake:'Slett opptak', download:'Last ned opptak som ZIP', clear:'Slett alle lokale opptak', exportHelp:'ZIP-filen inneholder WAV-lyd og merking, også opptak som ikke er kontrollert eller er utelatt. Send filen til utvikleren på avtalt måte. Bare kontrollerte opptak uten avbrudd kan brukes til trening. Last ned en sikkerhetskopi før du lukker siden eller bytter nettleser.',
+    footer:'Begynn med enkeltkommandoer, deretter de to rundene med trylleformler, tale og støy. Ta pauser. Ikke ta opp private samtaler eller andre personer uten samtykke. Hele settet tar lengre tid enn en kort økt. Mikrofonen starter aldri bare fordi du åpner siden.',
+    storageReady:'Opptakene lagres på denne enheten i denne nettleseren. Last også ned en ZIP-sikkerhetskopi: sletting av nettleserdata eller flytting av filen kan gjøre lokale opptak utilgjengelige.', storageUnavailable:'Automatisk lokal lagring er ikke tilgjengelig. Hold siden åpen, og last ned ZIP-filen før du lukker den.', storageFailed:'Lokal lagring mislyktes (lagringsplassen kan være full). Opptakene er fortsatt på siden; last ned ZIP-filen nå, før du lukker.', restored:'Gjenopprettet {count} opptak fra nettleseren. Mikrofon av.',
+    summary:'Opptak: {total} · kontrollert: {verified} · utelatt: {excluded} · ukontrollert: {pending}', takeOption:'{index}. {name} · {seconds} s · {review}', pending:'ukontrollert', verified:'kontrollert', excluded:'utelatt', detail:'Deltaker: {speaker} · {language} · {device}', interruptedDetail:'Avbrutt opptak: utelat det og ta opp på nytt.',
+    verifiedStatus:'Merkingen er bekreftet. Velg «Neste» for å fortsette.', excludedStatus:'Opptaket er utelatt. Det blir med i arkivet, merket som utelatt.', deletedStatus:'Opptaket er slettet.', clearedStatus:'Alle lokale opptak er slettet. Nedlastede ZIP-filer er uendret.', confirmDelete:'Slette dette opptaket fra siden og nettleserens lokale lagring?', confirmClear:'Slette ALLE opptak fra siden og nettleserens lokale lagring? Last ned ZIP-filen først. Dette kan ikke angres.',
+    invalidSpeaker:'Skriv en ID med bokstaver, tall, - eller _ (maks. 80 tegn).', consentRequired:'Du må samtykke før opptak.', languageRequired:'Oppgi morsmålet ditt.', unsupported:'Denne nettleseren kan ikke ta opp lyd her. Åpne recorder.html i en oppdatert Chrome eller Edge på datamaskinen. Hvis filtilgang er blokkert, bruk den valgfrie lokale oppstarten i arkivet.', permissionDenied:'Tilgang til mikrofonen ble avslått. Tillat den i nettleseren og systemets personverninnstillinger, og trykk deretter på «Ta opp» igjen.', noMicrophone:'Fant ingen mikrofon. Koble til en og prøv igjen.', microphoneBusy:'Kunne ikke åpne mikrofonen. Kontroller systemtillatelser og om en annen app bruker den.', unknownRune:'Ukjent kommando: {word}. Bruk runenavnene som vises.', kindMismatch:'En kommando må inneholde minst én rune. Vanlig tale og støy skal ha tomt runefelt.', listenFirst:'Lytt til hele opptaket før du bekrefter merkingen.', invalidTake:'Et avbrutt eller tomt opptak kan ikke bekreftes. Utelat det og ta opp på nytt.', hiddenInterruption:'Siden ble skjult under opptaket', deviceInterruption:'Mikrofonen ble koblet fra eller lyden satt på pause', noAudio:'Ingen lyd ble tatt opp. Kontroller mikrofonen og ta opp på nytt.', exportPending:'Arkivet inneholder {count} ukontrollerte opptak. Kontroller dem før du sender, hvis mulig.', exportDone:'ZIP-filen er lastet ned. Kontroller nedlastingsmappen før du sletter opptak.', reviewChanged:'Merkingen er endret. Lytt og bekreft på nytt.',
+    speechTasks:['Fortell om dagen din på morsmålet ditt i 30–60 sekunder, uten bevisste runekommandoer.','Les et vanlig avsnitt på morsmålet ditt. Ikke legg inn runekommandoer med vilje.','Si disse vanlige ordene: tsunami, banan, oppsummering, tabubelagt, panorama, sumobryter. Fortsett deretter med vanlig tale på morsmålet ditt, uten enkeltstående runekommandoer.','Ta opp offentlig tale, tale fra personer som har samtykket, eller musikk fra høyttalere ved vanlig volum. Ingen private samtaler.'],
+    noiseTasks:['Stillhet i rommet — minst 30 sekunder.','Blås mot mikrofonen noen ganger med ulik styrke, uten å snakke. Ikke berør den med leppene; stopp hvis det føles ubehagelig.','Pusting og utpust — 20 sekunder, uten tale.','Rasling fra klær og bevegelse av hodesettet, uten tale.','Skriv på tastaturet og beveg musen i 20 sekunder, uten tale.','Vifte eller annen bakgrunnsstøy i hjemmet — minst 30 sekunder, uten tale.']
+  }
+};
+
+// Sequential participant flow.
+Object.assign(messages.en,{
+  "wizardIdentity": "Choose your language and participant ID",
+  "wizardAbout": "About the project",
+  "wizardProject": "VoiceMagic is an experimental game where players build spells by speaking rune names. Your recordings will help train and evaluate one shared voice model that understands different voices and accents, rather than a personal voice profile.",
+  "wizardInstructions": "You will record 14 individual commands (12 runes and 2 cancellation words), followed by 7 randomly selected spells. Say them in your natural voice. Listen to each recording, enter what you actually said, and confirm before continuing. Nothing is uploaded automatically.",
+  "wizardStart": "Start recording tasks",
+  "wizardRecord": "Record the command shown below",
+  "wizardReview": "Listen and check your recording",
+  "wizardStep": "Step {step} of 4",
+  "wizardWords": "Individual commands",
+  "wizardSpells": "Random spells",
+  "wizardCounter": "Recording {index} / {total} · {part}: {partIndex} / {partTotal}",
+  "wizardFinish": "Finish →",
+  "wizardThanks": "Thank you for helping!",
+  "wizardThankYou": "Your recordings will help VoiceMagic understand more voices and accents. Thank you for your time and care.",
+  "wizardSend": "Download your recordings ZIP. You can send the result to me at:",
+  "wizardAttach": "Attach the downloaded ZIP to your email. This page does not send recordings or emails automatically.",
+  "wizardReturn": "Back to recordings"
+});
+Object.assign(messages.ru,{
+  "wizardIdentity": "Выберите язык и ID участника",
+  "wizardAbout": "О проекте",
+  "wizardProject": "VoiceMagic — экспериментальная игра, в которой заклинания собираются из произнесённых рун. Ваши записи помогут обучить и проверить одну общую голосовую модель, понимающую разные голоса и акценты. Это не личный голосовой профиль.",
+  "wizardInstructions": "Вам предстоит записать 14 отдельных команд (12 рун и 2 слова отмены), затем 7 случайных заклинаний. Говорите обычным голосом. Каждую запись прослушайте, укажите то, что действительно произнесли, и подтвердите перед переходом дальше. Автоматической отправки нет.",
+  "wizardStart": "Перейти к записи",
+  "wizardRecord": "Запишите показанную команду",
+  "wizardReview": "Прослушайте и проверьте запись",
+  "wizardStep": "Шаг {step} из 4",
+  "wizardWords": "Отдельные команды",
+  "wizardSpells": "Случайные заклинания",
+  "wizardCounter": "Запись {index} / {total} · {part}: {partIndex} / {partTotal}",
+  "wizardFinish": "Завершить →",
+  "wizardThanks": "Спасибо за помощь!",
+  "wizardThankYou": "Ваши записи помогут VoiceMagic понимать больше голосов и акцентов. Спасибо за ваше время и внимательность.",
+  "wizardSend": "Скачайте ZIP с записями. Результат можно отправить мне на почту:",
+  "wizardAttach": "Прикрепите скачанный ZIP к письму. Страница не отправляет записи или письма автоматически.",
+  "wizardReturn": "Вернуться к записям"
+});
+Object.assign(messages.uk,{
+  "wizardIdentity": "Виберіть мову та ID учасника",
+  "wizardAbout": "Про проєкт",
+  "wizardProject": "VoiceMagic — експериментальна гра, у якій заклинання складаються з вимовлених рун. Ваші записи допоможуть навчити й перевірити одну спільну голосову модель, що розуміє різні голоси та акценти. Це не особистий голосовий профіль.",
+  "wizardInstructions": "Ви запишете 14 окремих команд (12 рун і 2 слова скасування), а потім 7 випадкових заклинань. Говоріть звичайним голосом. Прослухайте кожен запис, укажіть те, що справді вимовили, і підтвердьте перед переходом далі. Автоматичного надсилання немає.",
+  "wizardStart": "Перейти до запису",
+  "wizardRecord": "Запишіть показану команду",
+  "wizardReview": "Прослухайте й перевірте запис",
+  "wizardStep": "Крок {step} із 4",
+  "wizardWords": "Окремі команди",
+  "wizardSpells": "Випадкові заклинання",
+  "wizardCounter": "Запис {index} / {total} · {part}: {partIndex} / {partTotal}",
+  "wizardFinish": "Завершити →",
+  "wizardThanks": "Дякую за допомогу!",
+  "wizardThankYou": "Ваші записи допоможуть VoiceMagic розуміти більше голосів та акцентів. Дякую за ваш час і уважність.",
+  "wizardSend": "Завантажте ZIP із записами. Результат можна надіслати мені на пошту:",
+  "wizardAttach": "Прикріпіть завантажений ZIP до листа. Сторінка не надсилає записи чи листи автоматично.",
+  "wizardReturn": "Повернутися до записів"
+});
+Object.assign(messages.nb,{
+  "wizardIdentity": "Velg språk og deltaker-ID",
+  "wizardAbout": "Om prosjektet",
+  "wizardProject": "VoiceMagic er et eksperimentelt spill der spillere lager trylleformler ved å si runenavn. Opptakene dine vil bidra til å trene og evaluere én felles stemmemodell som forstår ulike stemmer og aksenter, ikke en personlig stemmeprofil.",
+  "wizardInstructions": "Du skal ta opp 14 enkeltkommandoer (12 runer og 2 avbrytkommandoer), deretter 7 tilfeldig valgte trylleformler. Bruk vanlig stemme. Lytt til hvert opptak, skriv det du faktisk sa, og bekreft før du går videre. Ingenting lastes opp automatisk.",
+  "wizardStart": "Gå til opptak",
+  "wizardRecord": "Ta opp kommandoen nedenfor",
+  "wizardReview": "Lytt og kontroller opptaket",
+  "wizardStep": "Trinn {step} av 4",
+  "wizardWords": "Enkeltkommandoer",
+  "wizardSpells": "Tilfeldige trylleformler",
+  "wizardCounter": "Opptak {index} / {total} · {part}: {partIndex} / {partTotal}",
+  "wizardFinish": "Fullfør →",
+  "wizardThanks": "Takk for hjelpen!",
+  "wizardThankYou": "Opptakene dine vil hjelpe VoiceMagic med å forstå flere stemmer og aksenter. Takk for tiden og innsatsen din.",
+  "wizardSend": "Last ned ZIP-filen med opptakene. Du kan sende resultatet til meg på:",
+  "wizardAttach": "Legg ved den nedlastede ZIP-filen i e-posten. Siden sender ikke opptak eller e-post automatisk.",
+  "wizardReturn": "Tilbake til opptakene"
+});
+
+Object.assign(messages.en,{"replay": "Listen again", "inlineConfirm": "Confirm recording", "inlineCancel": "Cancel / record again", "inlineReview": "Listen to your recording. Confirm only if you hear exactly the command shown above. If you said something else, cancel this take and record again."});
+
+Object.assign(messages.ru,{"replay": "Переслушать", "inlineConfirm": "Подтвердить запись", "inlineCancel": "Отменить / перезаписать", "inlineReview": "Прослушайте запись. Подтверждайте, только если произнесли именно показанную команду. Если ошиблись, отмените попытку и запишите заново."});
+
+Object.assign(messages.uk,{"replay": "Прослухати ще раз", "inlineConfirm": "Підтвердити запис", "inlineCancel": "Скасувати / перезаписати", "inlineReview": "Прослухайте запис. Підтверджуйте, лише якщо вимовили саме показану команду. Якщо помилилися, скасуйте спробу та запишіть знову."});
+
+Object.assign(messages.nb,{"replay": "Lytt igjen", "inlineConfirm": "Bekreft opptaket", "inlineCancel": "Avbryt / ta opp på nytt", "inlineReview": "Lytt til opptaket. Bekreft bare hvis du hører nøyaktig kommandoen ovenfor. Hvis du sa noe annet, avbryt dette opptaket og ta opp på nytt."});
+
+</script><script>
+'use strict';
+// No CDN, telemetry, upload or speech service. See recorder-locales.js for text.
+const $ = id => document.getElementById(id), encoder = new TextEncoder();
+const words = ['Саку','Нами','Бума','Муна','Тана','Суми','Нуба','Маса','Бину','Таму','Насу','Ату','Отмена','Стоп'];
+const ids = ['Ign','Una','Num','Vae','Shu','Rem','Dum','Vir','Twi','Tik','Bom','Ka','Cancel','Stop'];
+const latin = ['Saku','Nami','Buma','Muna','Tana','Sumi','Nuba','Masa','Binu','Tamu','Nasu','Atu','Otmena','Stop'];
+// Broad phonemic hints, not a newly imposed stress convention for rune names.
+const ipa = ['sa.ku','na.mi','bu.ma','mu.na','ta.na','su.mi','nu.ba','ma.sa','bi.nu','ta.mu','na.su','a.tu','ɐtˈmʲenə','stop'];
+const readings = {
+  en:['sah-koo','nah-mee','boo-mah','moo-nah','tah-nah','soo-mee','noo-bah','mah-sah','bee-noo','tah-moo','nah-soo','ah-too','aht-MYEH-nuh','stop'],
+  ru:['са-ку','на-ми','бу-ма','му-на','та-на','су-ми','ну-ба','ма-са','би-ну','та-му','на-су','а-ту','от-ме́-на','стоп'],
+  uk:['са-ку','на-мі','бу-ма','му-на','та-на','су-мі','ну-ба','ма-са','бі-ну','та-му','на-су','а-ту','ат-мє́-на','стоп'],
+  nb:['sa-ko','na-mi','bo-ma','mo-na','ta-na','so-mi','no-ba','ma-sa','bi-no','ta-mo','na-so','a-to','at-MJE-na','stopp']
+};
+function preference(key, value) { try { if(value === undefined) return localStorage.getItem('vm-recorder:'+key); localStorage.setItem('vm-recorder:'+key,value); } catch {} return null; }
+function detectLocale(language) { const code=(language||'').toLowerCase().split(/[-_]/)[0]; return code==='no'||code==='nn'?'nb':messages[code]?code:'en'; }
+let locale=detectLocale(preference('locale')||'en');
+function t(key, values={}) { return messages[locale][key].replace(/\{(\w+)\}/g,(_,name)=>String(values[name]??'')); }
+let statusKey='idle',statusValues={};
+function status(key,values={}) { statusKey=key;statusValues=values;$('status').textContent=t(key,values); }
+function error(key,values={}) { $('error').textContent=key?t(key,values):''; }
+function commandName(i) { return locale==='ru'?words[i]:locale==='uk'?words[i].replaceAll('и','і'):latin[i]; }
+const lookup={};
+for(let i=0;i<ids.length;i++)for(const alias of [words[i],latin[i],words[i].replaceAll('и','і')])lookup[alias.toLowerCase()]=ids[i];
+function parseTranscript(text) { return text.trim()?text.trim().toLowerCase().split(/[\s,;→]+/).map(word=>{if(!lookup[word])throw Error(t('unknownRune',{word}));return lookup[word];}):[]; }
+function canonical(tokens) { return tokens.map(id=>words[ids.indexOf(id)]).join(' '); }
+function displayTokens(tokens) { return tokens.map(id=>commandName(ids.indexOf(id))).join(' '); }
+const session=new Date().toISOString().replace(/[:.]/g,'-')+'_'+crypto.randomUUID().slice(0,8);
+let prompts=[],index=0,takes=[],last=null,active=false,starting=false,finishing=false,captureSerial=0,stream=null,context=null,node=null,source=null,mute=null,timer,blocks=[],sampleCount=0,startTime,reviewURL=null,capture=null,db=null,storageState='storageUnavailable',saving=Promise.resolve();
+function storageMessage() { $('storage-status').textContent=t(storageState);$('storage-status').classList.toggle('warning',storageState!=='storageReady'); }
+function transaction(action) { return new Promise((resolve,reject)=>{const tx=db.transaction('takes','readwrite');action(tx.objectStore('takes'));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);}); }
+function persist(take, remove=false) { if(!db)return Promise.resolve(true);const snapshot=structuredClone(take);let success=true;saving=saving.then(()=>transaction(store=>remove?store.delete(snapshot.id):store.put(snapshot))).catch(()=>{success=false;storageState='storageFailed';storageMessage();});return saving.then(()=>success); }
+async function openStorage() {
+  try {
+    db=await new Promise((resolve,reject)=>{const request=indexedDB.open('VoiceMagicRuneRecorder',1);request.onupgradeneeded=()=>request.result.createObjectStore('takes',{keyPath:'id'});request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);request.onblocked=()=>reject(Error('Storage blocked'));});
+    takes=await new Promise((resolve,reject)=>{const request=db.transaction('takes').objectStore('takes').getAll();request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
+    takes.sort((a,b)=>a.metadata.utc.localeCompare(b.metadata.utc));storageState='storageReady';
+    db.onversionchange=()=>{db.close();db=null;storageState='storageUnavailable';storageMessage();};
+    if(takes.length)status('restored',{count:takes.length});
+  } catch { if(db)db.close();db=null; }
+  storageMessage();summary();if(takes.length)selectTake(takes.at(-1).id);lock(false);
+}
+function rememberProfile() { for(const id of ['speaker','language','environment','group','pace','duration'])preference(id,$(id).value);preference('index',String(index)); }
+function setPrompts(reset=true) {
+  const group=$('group').value;prompts=[];if(reset)index=0;
+  if(group==='words')prompts=ids.map((id,i)=>({key:'word-'+id,tokens:[id],kind:'command',text:words[i]}));
+  if(group==='chains')for(let e=0;e<4;e++)for(let f=4;f<8;f++)for(const feature of [-1,8,9,10]){const ix=[e,f,...(feature<0?[]:[feature]),11],tokens=ix.map(i=>ids[i]);prompts.push({key:'chain-'+tokens.join('-')+'-'+$('pace').value,tokens,kind:'command',text:canonical(tokens)});}
+  if(group==='speech'||group==='noise')prompts=messages.en[group+'Tasks'].map((_,i)=>({key:group+'-'+i,taskIndex:i,tokens:[],kind:group}));
+  index=Math.max(0,Math.min(index,prompts.length-1));renderPrompt();rememberProfile();
+}
+function promptText(p, language=locale) { return p.kind==='command'?displayTokens(p.tokens):messages[language][p.kind+'Tasks'][p.taskIndex]; }
+function renderPrompt() {
+  if(!prompts.length)return;const p=prompts[index],done=new Set(takes.filter(take=>take.metadata.review==='verified'&&take.metadata.speaker===$('speaker').value.trim()).map(take=>take.metadata.promptKey));
+  $('counter').textContent=t('counter',{index:index+1,total:prompts.length,done:prompts.filter(p=>done.has(p.key)).length});
+  $('prompt').textContent=promptText(p);$('pronunciation').textContent=p.tokens.map(id=>readings[locale][ids.indexOf(id)]).join('  ·  ');$('ipa').textContent=p.tokens.map(id=>'/'+ipa[ids.indexOf(id)]+'/').join('  ');
+  $('hint').textContent=t(p.kind!=='command'?'backgroundHint':$('group').value==='chains'?($('pace').value==='joined'?'joinedHint':'normalHint'):'wordHint',{limit:$('duration').value});
+  $('pace-label').hidden=$('group').value!=='chains';$('duration-label').hidden=p.kind==='command';
+}
+function applyLocale() {
+  document.documentElement.lang=locale;document.title='VoiceMagic · '+t('recordingsTitle').replace(/^3 · /,'');$('ui-language').value=locale;
+  for(const el of document.querySelectorAll('[data-i18n]'))el.textContent=t(el.dataset.i18n);
+  for(const el of document.querySelectorAll('[data-placeholder]'))el.placeholder=t(el.dataset.placeholder);
+  for(const el of document.querySelectorAll('[data-aria]'))el.setAttribute('aria-label',t(el.dataset.aria));
+  for(const option of $('duration').children)option.textContent=t('durationOption',{seconds:option.value});
+  $('rune-table').replaceChildren(...words.map((word,i)=>{const row=document.createElement('tr');for(const value of [word+' · '+latin[i],readings[locale][i],'/'+ipa[i]+'/']){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}return row;}));
+  $('transcript-buttons').replaceChildren(...ids.map((id,i)=>{const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent=commandName(i);button.onclick=()=>{if(active||starting||finishing)return;$('transcript').value=[$('transcript').value.trim(),commandName(i)].filter(Boolean).join(' ');annotationChanged();};return button;}));
+  storageMessage();status(statusKey,statusValues);error('');renderPrompt();summary();renderTakeDetails();
+}
+function lock(value) {
+  for(const id of ['ui-language','speaker','language','environment','consent','group','pace','duration','previous','next','record','take-list','kind','transcript','exclude','delete-take','clear'])$(id).disabled=value;
+  for(const button of $('transcript-buttons').children)button.disabled=value;
+  $('stop').disabled=!(active||starting);$('download').disabled=value||!takes.length;$('clear').disabled=value||!takes.length;$('take-list').disabled=value||!takes.length;$('verify').disabled=value||!last||!last.listened;$('playback').controls=!value;
+}
+async function digest(bytes) { return [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(v=>v.toString(16).padStart(2,'0')).join(''); }
+async function split(id) { const hex=await digest(encoder.encode('VoiceMagic-Neural-v1:'+id)),bucket=parseInt(hex.slice(0,8),16)%10;return bucket===0?'test':bucket===1?'dev':'train'; }
+function wav(samples) {
+  const buffer=new ArrayBuffer(44+samples.length*2),view=new DataView(buffer);
+  function text(offset,value){for(let i=0;i<value.length;i++)view.setUint8(offset+i,value.charCodeAt(i));}
+  text(0,'RIFF');view.setUint32(4,36+samples.length*2,true);text(8,'WAVEfmt ');view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,1,true);view.setUint32(24,48000,true);view.setUint32(28,96000,true);view.setUint16(32,2,true);view.setUint16(34,16,true);text(36,'data');view.setUint32(40,samples.length*2,true);
+  for(let i=0;i<samples.length;i++)view.setInt16(44+2*i,Math.round(Math.max(-1,Math.min(1,samples[i]))*32767),true);return new Uint8Array(buffer);
+}
+async function record() {
+  if(active||starting||finishing)return;const serial=++captureSerial;error('');
+  try {
+    const speaker=$('speaker').value.trim();if(!/^[\p{L}\p{N}_-]{1,80}$/u.test(speaker))throw Error(t('invalidSpeaker'));
+    if(!$('consent').checked)throw Error(t('consentRequired'));if(!$('language').value.trim())throw Error(t('languageRequired'));
+    if(!globalThis.isSecureContext||!navigator.mediaDevices?.getUserMedia||!globalThis.AudioContext||!globalThis.AudioWorkletNode)throw Error(t('unsupported'));
+    rememberProfile();starting=true;lock(true);$('stop').disabled=false;status('requesting');$('playback').pause();
+    const p=structuredClone(prompts[index]);capture={speaker,language:$('language').value.trim(),environment:$('environment').value,prompt:p,uiLocale:locale,promptText:promptText(p),pace:$('group').value==='chains'?$('pace').value:'',limit:p.kind==='command'?15:Number($('duration').value)};
+    // Resume in the click gesture, before an asynchronous permission prompt.
+    const requestedContext=new AudioContext({sampleRate:48000});context=requestedContext;await requestedContext.resume();
+    if(!starting||serial!==captureSerial)return;
+    const requestedStream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});
+    if(!starting||serial!==captureSerial){requestedStream.getTracks().forEach(track=>track.stop());return;}stream=requestedStream;
+    const code=`class Capture extends AudioWorkletProcessor{constructor(){super();this.buffer=new Float32Array(2048);this.offset=0;this.port.onmessage=e=>{if(e.data==='flush'){if(this.offset)this.port.postMessage(this.buffer.slice(0,this.offset));this.offset=0;this.port.postMessage('flushed');}};}process(inputs){const channels=inputs[0];if(channels&&channels.length)for(let i=0;i<channels[0].length;i++){let sample=0;for(const channel of channels)sample+=channel[i]/channels.length;this.buffer[this.offset++]=sample;if(this.offset===this.buffer.length){this.port.postMessage(this.buffer.slice());this.offset=0;}}return true;}}registerProcessor('capture',Capture);`;
+    if(!requestedContext.audioWorklet)throw Error(t('unsupported'));
+    // A data module also works from file:// in Chromium, whose opaque file
+    // origin rejects blob:null worklet modules. This contains only our code.
+    await requestedContext.audioWorklet.addModule('data:text/javascript;charset=utf-8,'+encodeURIComponent(code),{credentials:'omit'});
+    if(!starting||serial!==captureSerial)return;
+    blocks=[];sampleCount=0;node=new AudioWorkletNode(context,'capture');node.port.onmessage=e=>{if((active||finishing)&&e.data instanceof Float32Array){blocks.push(e.data);sampleCount+=e.data.length;let square=0;for(const value of e.data)square+=value*value;$('level').value=Math.min(1,Math.sqrt(square/e.data.length)*4);}};
+    source=context.createMediaStreamSource(stream);source.connect(node);mute=context.createGain();mute.gain.value=0;node.connect(mute).connect(context.destination);
+    for(const track of stream.getAudioTracks())track.onended=()=>{if(active)stop('deviceInterruption');};
+    active=true;starting=false;startTime=Date.now();context.onstatechange=()=>{if(active&&context.state!=='running')stop('deviceInterruption');};status('recording',{seconds:'0.0',limit:capture.limit});lock(true);
+    timer=setInterval(()=>{status('recording',{seconds:((Date.now()-startTime)/1000).toFixed(1),limit:capture.limit});if(Date.now()-startTime>=capture.limit*1000)stop();},100);
+  } catch(e) {
+    if(serial!==captureSerial)return;starting=false;active=false;cleanup();lock(false);status('idle');
+    const key={NotAllowedError:'permissionDenied',NotFoundError:'noMicrophone',NotReadableError:'microphoneBusy'}[e.name];$('error').textContent=key?t(key):e.message;
+  }
+}
+function cleanup() {
+  clearInterval(timer);if(node){node.port.onmessage=null;node.disconnect();node=null;}if(source){source.disconnect();source=null;}if(mute){mute.disconnect();mute=null;}
+  if(stream){stream.getTracks().forEach(track=>{track.onended=null;track.stop();});stream=null;}
+  if(context){context.onstatechange=null;if(context.state!=='closed')context.close().catch(()=>{});context=null;}$('level').value=0;
+}
+async function stop(interruption='') {
+  if(starting){captureSerial++;starting=false;cleanup();lock(false);status('idle');return;}
+  if(!active)return;active=false;finishing=true;clearInterval(timer);lock(true);status('finishing');
+  const rate=context.sampleRate,device=stream.getAudioTracks()[0]?.label||'default',captured=capture;
+  // Drain partial worklet blocks; interrupted/suspended contexts may not answer.
+  if(!interruption&&context.state==='running')await new Promise(resolve=>{const handler=node.port.onmessage;let done=false;const finish=()=>{if(done)return;done=true;clearTimeout(timeout);resolve();};const timeout=setTimeout(finish,500);node.port.onmessage=e=>e.data==='flushed'?finish():handler(e);node.port.postMessage('flush');});
+  cleanup();
+  try {
+    let audio=new Float32Array(sampleCount),offset=0;for(const block of blocks){audio.set(block,offset);offset+=block.length;}blocks=[];
+    if(!audio.length)throw Error(t('noAudio'));
+    // Timer scheduling and the final partial block must not exceed the dataset
+    // limit (120 seconds). Keep the original beginning and discard excess tail.
+    audio=audio.subarray(0,Math.round(captured.limit*rate));
+    if(rate!==48000){const offline=new OfflineAudioContext(1,Math.ceil(audio.length*48000/rate),48000),buffer=offline.createBuffer(1,audio.length,rate);buffer.copyToChannel(audio,0);const resampler=offline.createBufferSource();resampler.buffer=buffer;resampler.connect(offline.destination);resampler.start();audio=(await offline.startRendering()).getChannelData(0).slice();}
+    const bytes=wav(audio),id=crypto.randomUUID(),p=captured.prompt;
+    const metadata={schema:1,vocabulary:'runes-atu-v1',speaker:captured.speaker,session,split:await split(captured.speaker),device,language:captured.language,environment:captured.environment,kind:p.kind,prompt:p.kind==='command'?canonical(p.tokens):captured.promptText,promptTokens:p.tokens,promptKey:p.key,uiLocale:captured.uiLocale,pace:captured.pace,transcript:'',source:'human',review:'pending',consent:true,tokens:[],spans:[],samples:audio.length,utc:new Date().toISOString(),sha256:await digest(bytes),interruption};
+    // A task is not a trusted transcript. Only a listener enters actual words.
+    last={id,bytes,metadata,listened:false};takes.push(last);await persist(last);summary();selectTake(id);status('saved');
+  } catch(e) { $('error').textContent=e.message;status('idle'); }
+  finally { finishing=false;lock(false); }
+}
+function summary() {
+  const verified=takes.filter(take=>take.metadata.review==='verified').length,excluded=takes.filter(take=>take.metadata.review==='excluded').length;
+  $('summary').textContent=t('summary',{total:takes.length,verified,excluded,pending:takes.length-verified-excluded});
+  $('take-list').replaceChildren(...takes.map((take,i)=>{const option=document.createElement('option');option.value=take.id;const m=take.metadata,name=m.promptTokens?.length?displayTokens(m.promptTokens):t(m.kind+'Kind');option.textContent=t('takeOption',{index:i+1,name,seconds:(m.samples/48000).toFixed(1),review:t(m.review)});return option;}));
+  if(last)$('take-list').value=last.id;$('take-list').disabled=active||starting||finishing||!takes.length;$('download').disabled=active||starting||finishing||!takes.length;$('clear').disabled=$('download').disabled;renderPrompt();
+}
+function renderTakeDetails() { if(!last)return;const m=last.metadata;$('take-details').textContent=t('detail',m)+(m.interruption?' · '+t('interruptedDetail'):''); }
+function selectTake(id) {
+  if(active||starting)return;last=takes.find(take=>take.id===id)||null;$('review').hidden=!last;if(!last){$('playback').pause();$('playback').removeAttribute('src');if(reviewURL)URL.revokeObjectURL(reviewURL);reviewURL=null;return;}
+  $('playback').pause();if(reviewURL)URL.revokeObjectURL(reviewURL);reviewURL=URL.createObjectURL(new Blob([last.bytes],{type:'audio/wav'}));$('playback').src=reviewURL;
+  $('take-list').value=last.id;$('kind').value=last.draftKind??last.metadata.kind;$('transcript').value=last.draftTranscript??displayTokens(last.metadata.tokens);$('verify').disabled=!last.listened;renderTakeDetails();
+}
+function annotationChanged() {
+  if(!last||active||starting||finishing)return;
+  // An edit invalidates previous confirmation, even if the text is now invalid.
+  last.draftKind=$('kind').value;last.draftTranscript=$('transcript').value;
+  if(last.metadata.review==='verified'){last.metadata.review='pending';summary();status('reviewChanged');}
+  persist(last);
+}
+async function verify() {
+  if(!last||active||starting||finishing)return;error('');
+  try {
+    if(!last.listened)throw Error(t('listenFirst'));
+    const tokens=parseTranscript($('transcript').value),kind=$('kind').value;
+    if((kind==='command')!==Boolean(tokens.length))throw Error(t('kindMismatch'));
+    if(last.metadata.interruption||last.metadata.samples<4800)throw Error(t('invalidTake'));
+    last.metadata={...last.metadata,kind,transcript:canonical(tokens),tokens,review:'verified',reviewedUtc:new Date().toISOString()};delete last.draftKind;delete last.draftTranscript;await persist(last);summary();status('verifiedStatus');
+  } catch(e) { $('error').textContent=e.message; }
+}
+// ZIP STORE, UTF-8 names, CRC32. No external libraries.
+function zip(files) {
+  const table=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;table[n]=c>>>0;}
+  function crc(bytes){let c=0xffffffff;for(const x of bytes)c=table[(c^x)&255]^(c>>>8);return(c^0xffffffff)>>>0;}
+  const local=[],central=[];let offset=0,size=0;
+  for(const [name,data] of files){const nb=encoder.encode(name),c=crc(data),h=new Uint8Array(30+nb.length),v=new DataView(h.buffer);v.setUint32(0,0x04034b50,true);v.setUint16(4,20,true);v.setUint16(6,0x800,true);v.setUint32(14,c,true);v.setUint32(18,data.length,true);v.setUint32(22,data.length,true);v.setUint16(26,nb.length,true);h.set(nb,30);local.push(h,data);const ch=new Uint8Array(46+nb.length),cv=new DataView(ch.buffer);cv.setUint32(0,0x02014b50,true);cv.setUint16(4,20,true);cv.setUint16(6,20,true);cv.setUint16(8,0x800,true);cv.setUint32(16,c,true);cv.setUint32(20,data.length,true);cv.setUint32(24,data.length,true);cv.setUint16(28,nb.length,true);cv.setUint32(42,offset,true);ch.set(nb,46);central.push(ch);size+=ch.length;offset+=h.length+data.length;}
+  const end=new Uint8Array(22),ev=new DataView(end.buffer);ev.setUint32(0,0x06054b50,true);ev.setUint16(8,files.length,true);ev.setUint16(10,files.length,true);ev.setUint32(12,size,true);ev.setUint32(16,offset,true);return new Blob([...local,...central,end],{type:'application/zip'});
+}
+function download() {
+  if(active||starting||finishing||!takes.length)return;const files=[];for(const take of takes)files.push([take.id+'.wav',take.bytes],[take.id+'.take.json',encoder.encode(JSON.stringify(take.metadata,null,2))]);
+  const url=URL.createObjectURL(zip(files)),a=document.createElement('a');a.href=url;a.download='VoiceMagic_'+session+'.zip';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);const count=takes.filter(take=>take.metadata.review==='pending').length;status(count?'exportPending':'exportDone',{count});
+}
+$('record').onclick=record;$('stop').onclick=()=>stop();$('group').onchange=()=>setPrompts();$('pace').onchange=()=>setPrompts();$('duration').onchange=()=>{renderPrompt();rememberProfile();};
+$('previous').onclick=()=>{index=(index+prompts.length-1)%prompts.length;renderPrompt();rememberProfile();};$('next').onclick=()=>{index=(index+1)%prompts.length;renderPrompt();rememberProfile();};
+$('ui-language').onchange=()=>{locale=$('ui-language').value;preference('locale',locale);applyLocale();};$('take-list').onchange=()=>selectTake($('take-list').value);
+// The browser's played ranges exclude skipped parts, including short takes.
+$('playback').onended=()=>{const audio=$('playback'),played=audio.played;if(last&&Number.isFinite(audio.duration)&&played.length===1&&played.start(0)<0.03&&played.end(0)>=audio.duration-0.03){last.listened=true;persist(last);$('verify').disabled=false;}};
+$('transcript').oninput=annotationChanged;$('kind').onchange=annotationChanged;$('verify').onclick=verify;
+$('exclude').onclick=async()=>{if(!last||active||starting||finishing)return;last.metadata.review='excluded';await persist(last);summary();status('excludedStatus');error('');};
+$('delete-take').onclick=async()=>{if(!last||active||starting||finishing||!confirm(t('confirmDelete')))return;finishing=true;lock(true);try{const take=last;if(!await persist(take,true))return;takes=takes.filter(item=>item!==take);last=null;summary();selectTake(takes.at(-1)?.id);status('deletedStatus');}finally{finishing=false;lock(false);}};
+$('clear').onclick=async()=>{if(active||starting||finishing||!confirm(t('confirmClear')))return;finishing=true;lock(true);try{if(db){await saving;await transaction(store=>store.clear());}takes=[];last=null;summary();selectTake(null);status('clearedStatus');}catch{storageState='storageFailed';storageMessage();}finally{finishing=false;lock(false);}};
+$('download').onclick=download;for(const id of ['speaker','language','environment'])$(id).onchange=()=>{rememberProfile();renderPrompt();};
+window.addEventListener('beforeunload',event=>{if(active||starting||finishing||takes.length){event.preventDefault();event.returnValue='';}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&(active||starting))stop('hiddenInterruption');});
+for(const id of ['speaker','language','environment','group','pace','duration']){const value=preference(id);if(value!==null)$(id).value=value;}
+if(!$('speaker').value)$('speaker').value='speaker-'+crypto.randomUUID().slice(0,12);if(!['words','chains','speech','noise'].includes($('group').value))$('group').value='words';
+if(!['normal','joined'].includes($('pace').value))$('pace').value='normal';if(!['60','90','120'].includes($('duration').value))$('duration').value='60';
+index=Number(preference('index'))||0;setPrompts(false);applyLocale();lock(true);
+const ready=openStorage();
+
+</script><script>
+'use strict';
+// A short participant journey over the existing local capture/review engine.
+// Keep the full grammar in recorder.js; sample seven distinct legal spells.
+function wizardPlan(speaker) {
+  const key='wizard-plan-v1:'+speaker;
+  try {
+    const saved=JSON.parse(preference(key));
+    if(Array.isArray(saved)&&saved.length===7&&new Set(saved).size===7&&saved.every(n=>Number.isInteger(n)&&n>=0&&n<64))return saved;
+  } catch {}
+  const pool=Array.from({length:64},(_,i)=>i);
+  // Rejection sampling avoids modulo bias and does not use evaluation data.
+  function randomBelow(n){const bound=Math.floor(4294967296/n)*n,buffer=new Uint32Array(1);do{crypto.getRandomValues(buffer);}while(buffer[0]>=bound);return buffer[0]%n;}
+  for(let i=pool.length-1;i>0;i--){const j=randomBelow(i+1);[pool[i],pool[j]]=[pool[j],pool[i]];}
+  const result=pool.slice(0,7);preference(key,JSON.stringify(result));return result;
+}
+function wizardSequence(speaker) {
+  const singles=ids.map((id,i)=>({key:'wizard-v1-word-'+id,tokens:[id],kind:'command',text:words[i]}));
+  const all=[];for(let e=0;e<4;e++)for(let f=4;f<8;f++)for(const feature of [-1,8,9,10]){const tokens=[ids[e],ids[f],...(feature<0?[]:[ids[feature]]),'Ka'];all.push({key:'wizard-v1-spell-'+tokens.join('-'),tokens,kind:'command',text:canonical(tokens)});}
+  return [...singles,...wizardPlan(speaker).map(i=>all[i])];
+}
+let wizardScreen='identity',wizardSpeaker='';
+function wizardTake(p=prompts[index]) { return takes.findLast(take=>take.metadata.speaker===wizardSpeaker&&take.metadata.promptKey===p?.key); }
+function wizardReviewed(p) { const take=wizardTake(p);return take?.metadata.review==='verified'&&!take.metadata.interruption; }
+function wizardGate() {
+  const busy=active||starting||finishing;
+  $('next').disabled=busy||!prompts[index]||!wizardReviewed(prompts[index]);
+  for(const id of ['wizard-back','wizard-back-intro','wizard-start','wizard-continue','wizard-back-recordings','backup'])$(id).disabled=busy;
+  $('backup').disabled=busy||!takes.length;
+  const current=wizardTake();
+  $('review').hidden=!current||current.metadata.review==='excluded';
+  $('replay').disabled=busy||!current||current.metadata.review==='excluded';
+  $('verify').disabled=busy||!current||!current.listened||Boolean(current.metadata.interruption)||current.metadata.review==='excluded';
+  $('exclude').disabled=busy||!current||current.metadata.review==='excluded';
+}
+function wizardShow(screen) {
+  if(active||starting||finishing)return;
+  wizardScreen=screen;
+  for(const name of ['identity','intro','recording','thanks'])$('screen-'+name).hidden=name!==screen;
+  $('wizard-step').textContent=t('wizardStep',{step:{identity:1,intro:2,recording:3,thanks:4}[screen]});
+  $('error').textContent='';$('playback').pause();
+  window.scrollTo?.({top:0,behavior:'instant'});
+}
+async function initializeWizard() {
+  await ready;
+  const originalRender=renderPrompt,originalLock=lock,originalLocale=applyLocale,originalVerify=verify;
+  renderPrompt=function(){
+    originalRender();if(!prompts.length)return;
+    $('counter').textContent=t('wizardCounter',{index:index+1,total:21,part:index<14?t('wizardWords'):t('wizardSpells'),partIndex:index<14?index+1:index-13,partTotal:index<14?14:7});
+    $('hint').textContent=t(index<14?'wordHint':'joinedHint');
+    $('next').textContent=t(index===20?'wizardFinish':'next');
+    preference('wizard-index-v1:'+wizardSpeaker,String(index));wizardGate();
+  };
+  lock=function(value){originalLock(value);wizardGate();};
+  const originalEnded=$('playback').onended;
+  $('playback').onended=()=>{originalEnded();wizardGate();};
+  $('replay').onclick=async()=>{const take=wizardTake();if(!take||active||starting||finishing)return;if(last!==take)selectTake(take.id);$('playback').currentTime=0;try{await $('playback').play();}catch(e){$('error').textContent=e.message;}};
+  verify=async function(){
+    const take=wizardTake();if(!take||!take.listened||active||starting||finishing)return;
+    if(last!==take)selectTake(take.id);
+    // This button explicitly confirms the shown words after listening. A prompt
+    // alone is still never a label. Mistakes must be rejected and re-recorded.
+    $('kind').value='command';$('transcript').value=canonical(prompts[index].tokens);
+    await originalVerify();
+    if(take.metadata.review==='verified'){take.metadata.labelMethod='listened-exact-prompt-confirmation';await persist(take);}
+    wizardGate();
+  };
+  $('verify').onclick=verify;
+  $('exclude').onclick=async()=>{const take=wizardTake();if(!take||active||starting||finishing)return;take.metadata.review='excluded';await persist(take);$('playback').pause();summary();status('excludedStatus');wizardGate();};
+  applyLocale=function(){originalLocale();$('wizard-step').textContent=t('wizardStep',{step:{identity:1,intro:2,recording:3,thanks:4}[wizardScreen]});};
+  function loadParticipant(){
+    wizardSpeaker=$('speaker').value.trim();prompts=wizardSequence(wizardSpeaker);
+    index=Math.max(0,Math.min(20,Number(preference('wizard-index-v1:'+wizardSpeaker))||0));renderPrompt();
+  }
+  $('wizard-continue').onclick=()=>{
+    if(!/^[\p{L}\p{N}_-]{1,80}$/u.test($('speaker').value.trim())){error('invalidSpeaker');return;}
+    loadParticipant();rememberProfile();wizardShow('intro');
+  };
+  $('wizard-start').onclick=()=>{
+    if(!$('language').value.trim()){error('languageRequired');return;}
+    if(!$('consent').checked){error('consentRequired');return;}
+    rememberProfile();wizardShow('recording');renderPrompt();
+  };
+  $('wizard-back').onclick=()=>wizardShow('identity');$('wizard-back-intro').onclick=()=>wizardShow('intro');
+  $('previous').onclick=()=>{if(index>0){index--;const take=wizardTake();selectTake(take?.id);renderPrompt();}else wizardShow('intro');};
+  $('next').onclick=()=>{
+    if(active||starting||finishing||!wizardReviewed(prompts[index]))return;
+    if(index<20){index++;const take=wizardTake();selectTake(take?.id);renderPrompt();status('idle');}
+    else if(prompts.every(wizardReviewed))wizardShow('thanks');
+    else{index=prompts.findIndex(p=>!wizardReviewed(p));renderPrompt();}
+  };
+  $('wizard-back-recordings').onclick=()=>wizardShow('recording');$('backup').onclick=download;
+  loadParticipant();applyLocale();lock(false);wizardShow('identity');
+}
+const wizardReady=initializeWizard();
+
+</script>
+</body></html>
