@@ -550,3 +550,11 @@ Object.assign(messages.ru,{"wizardWelcome": "Добро пожаловать в 
 Object.assign(messages.uk,{"wizardWelcome": "Ласкаво просимо до VoiceMagic!", "wizardWelcomeThanks": "Привіт! Дякую, що знайшли час допомогти моєму проєкту. Ваш голос допоможе оживити магію вимовлених заклинань. Дуже ціную вашу підтримку.", "wizardThankYou": "Дякую, що виконали всі завдання та поділилися своїм голосом! Ваші записи допомагають мені розвивати VoiceMagic і працювати над розумінням різних голосів та акцентів. Дуже ціную ваш час, терпіння й допомогу."});
 
 Object.assign(messages.nb,{"wizardWelcome": "Velkommen til VoiceMagic!", "wizardWelcomeThanks": "Hei! Takk for at du tar deg tid til å hjelpe med prosjektet mitt. Ved å dele stemmen din bidrar du til å gjøre talte trylleformler levende. Jeg setter stor pris på støtten din.", "wizardThankYou": "Takk for at du fullførte oppgavene og delte stemmen din! Opptakene dine hjelper meg med å utvikle VoiceMagic og arbeide mot å forstå flere stemmer og aksenter. Jeg setter stor pris på tiden, tålmodigheten og hjelpen din."});
+
+Object.assign(messages.en,{"recordingDuration": "Recording all runes takes 5–15 minutes."});
+
+Object.assign(messages.ru,{"recordingDuration": "Запись всех рун занимает от 5 до 15 минут."});
+
+Object.assign(messages.uk,{"recordingDuration": "Запис усіх рун займає від 5 до 15 хвилин."});
+
+Object.assign(messages.nb,{"recordingDuration": "Det tar 5–15 minutter å ta opp alle runene."});
