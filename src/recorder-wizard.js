@@ -31,6 +31,7 @@ function wizardGate() {
   $('replay').disabled=busy||!current||current.metadata.review==='excluded';
   $('verify').disabled=busy||!current||!current.listened||Boolean(current.metadata.interruption)||current.metadata.review==='excluded';
   $('exclude').disabled=busy||!current||current.metadata.review==='excluded';
+  spellPreview.update(prompts[index],wizardScreen==='recording',busy);
 }
 function wizardShow(screen) {
   if(active||starting||finishing)return;
@@ -38,6 +39,7 @@ function wizardShow(screen) {
   for(const name of ['identity','intro','recording','thanks'])$('screen-'+name).hidden=name!==screen;
   $('wizard-step').textContent=t('wizardStep',{step:{identity:1,intro:2,recording:3,thanks:4}[screen]});
   $('error').textContent='';$('playback').pause();
+  spellPreview.update(prompts[index],screen==='recording',false);
   window.scrollTo?.({top:0,behavior:'instant'});
 }
 async function initializeWizard() {

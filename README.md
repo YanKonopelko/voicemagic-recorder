@@ -6,6 +6,9 @@ Four screens: identity, project/consent, 13 individual commands plus seven uniqu
 random spells, thanks and ZIP export. Listen and confirm the exact shown words,
 or cancel and record again. Recordings stay in the browser until manually exported.
 Nothing uploads audio. Results may be emailed manually to konopelkoyan@gmail.com.
+Random spells include silent illustrative WebM videos for all 64 combinations,
+with translated captions. They pause during voice recording. These are not game
+footage or recognition results. All clips are embedded in online and offline HTML.
 
 ## Offline fallback
 

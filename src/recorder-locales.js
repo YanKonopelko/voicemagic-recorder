@@ -534,3 +534,11 @@ const messages = {
     "retiredCommand": "[fjernet kommando]"
   }
 };
+
+Object.assign(messages.en,{"previewTitle": "Spell preview", "previewNote": "Illustrative example of the requested spell, not game footage or a recognition result. Silent; paused during voice recording.", "previewElements": ["Fire", "Water", "Stone", "Air"], "previewForms": ["Projectile", "Stream", "Wall", "Area"], "previewFeatures": ["", "Two copies · 65% strength each", "1.2-second delay", "Stronger push · recoil"]});
+
+Object.assign(messages.ru,{"previewTitle": "Примерный эффект заклинания", "previewNote": "Иллюстрация заданного заклинания, не игровая запись и не результат распознавания. Без звука; во время записи голоса видео приостанавливается.", "previewElements": ["Огонь", "Вода", "Камень", "Воздух"], "previewForms": ["Снаряд", "Поток", "Стена", "Область"], "previewFeatures": ["", "Две копии · по 65% силы", "Задержка 1,2 секунды", "Усиленный толчок · отдача"]});
+
+Object.assign(messages.uk,{"previewTitle": "Приблизний ефект заклинання", "previewNote": "Ілюстрація заданого заклинання, не ігровий запис і не результат розпізнавання. Без звуку; під час запису голосу відео призупиняється.", "previewElements": ["Вогонь", "Вода", "Камінь", "Повітря"], "previewForms": ["Снаряд", "Потік", "Стіна", "Область"], "previewFeatures": ["", "Дві копії · по 65% сили", "Затримка 1,2 секунди", "Посилений поштовх · віддача"]});
+
+Object.assign(messages.nb,{"previewTitle": "Forhåndsvisning av trylleformelen", "previewNote": "Illustrasjon av den viste trylleformelen, ikke spillopptak eller et gjenkjenningsresultat. Uten lyd; settes på pause under stemmeopptak.", "previewElements": ["Ild", "Vann", "Stein", "Luft"], "previewForms": ["Prosjektil", "Strøm", "Vegg", "Område"], "previewFeatures": ["", "To kopier · 65 % styrke hver", "1,2 sekunders forsinkelse", "Kraftigere dytt · rekyl"]});
