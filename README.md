@@ -2,7 +2,7 @@
 
 Standalone participant site, published with GitHub Pages from `main` at `/`.
 English is the default; Russian, Ukrainian and Norwegian Bokmål are available.
-Four screens: identity, project/consent, 14 individual commands plus seven unique
+Four screens: identity, project/consent, 13 individual commands plus seven unique
 random spells, thanks and ZIP export. Listen and confirm the exact shown words,
 or cancel and record again. Recordings stay in the browser until manually exported.
 Nothing uploads audio. Results may be emailed manually to konopelkoyan@gmail.com.

@@ -1,16 +1,16 @@
 'use strict';
 // No CDN, telemetry, upload or speech service. See recorder-locales.js for text.
 const $ = id => document.getElementById(id), encoder = new TextEncoder();
-const words = ['Саку','Нами','Бума','Муна','Тана','Суми','Нуба','Маса','Бину','Таму','Насу','Ату','Отмена','Стоп'];
-const ids = ['Ign','Una','Num','Vae','Shu','Rem','Dum','Vir','Twi','Tik','Bom','Ka','Cancel','Stop'];
-const latin = ['Saku','Nami','Buma','Muna','Tana','Sumi','Nuba','Masa','Binu','Tamu','Nasu','Atu','Otmena','Stop'];
+const words = ['Саку','Нами','Бума','Муна','Тана','Суми','Нуба','Маса','Бину','Таму','Насу','Ату','Стоп'];
+const ids = ['Ign','Una','Num','Vae','Shu','Rem','Dum','Vir','Twi','Tik','Bom','Ka','Stop'];
+const latin = ['Saku','Nami','Buma','Muna','Tana','Sumi','Nuba','Masa','Binu','Tamu','Nasu','Atu','Stop'];
 // Broad phonemic hints, not a newly imposed stress convention for rune names.
-const ipa = ['sa.ku','na.mi','bu.ma','mu.na','ta.na','su.mi','nu.ba','ma.sa','bi.nu','ta.mu','na.su','a.tu','ɐtˈmʲenə','stop'];
+const ipa = ['sa.ku','na.mi','bu.ma','mu.na','ta.na','su.mi','nu.ba','ma.sa','bi.nu','ta.mu','na.su','a.tu','stop'];
 const readings = {
-  en:['sah-koo','nah-mee','boo-mah','moo-nah','tah-nah','soo-mee','noo-bah','mah-sah','bee-noo','tah-moo','nah-soo','ah-too','aht-MYEH-nuh','stop'],
-  ru:['са-ку','на-ми','бу-ма','му-на','та-на','су-ми','ну-ба','ма-са','би-ну','та-му','на-су','а-ту','от-ме́-на','стоп'],
-  uk:['са-ку','на-мі','бу-ма','му-на','та-на','су-мі','ну-ба','ма-са','бі-ну','та-му','на-су','а-ту','ат-мє́-на','стоп'],
-  nb:['sa-ko','na-mi','bo-ma','mo-na','ta-na','so-mi','no-ba','ma-sa','bi-no','ta-mo','na-so','a-to','at-MJE-na','stopp']
+  en:['sah-koo','nah-mee','boo-mah','moo-nah','tah-nah','soo-mee','noo-bah','mah-sah','bee-noo','tah-moo','nah-soo','ah-too','stop'],
+  ru:['са-ку','на-ми','бу-ма','му-на','та-на','су-ми','ну-ба','ма-са','би-ну','та-му','на-су','а-ту','стоп'],
+  uk:['са-ку','на-мі','бу-ма','му-на','та-на','су-мі','ну-ба','ма-са','бі-ну','та-му','на-су','а-ту','стоп'],
+  nb:['sa-ko','na-mi','bo-ma','mo-na','ta-na','so-mi','no-ba','ma-sa','bi-no','ta-mo','na-so','a-to','stopp']
 };
 function preference(key, value) { try { if(value === undefined) return localStorage.getItem('vm-recorder:'+key); localStorage.setItem('vm-recorder:'+key,value); } catch {} return null; }
 function detectLocale(language) { const code=(language||'').toLowerCase().split(/[-_]/)[0]; return code==='no'||code==='nn'?'nb':messages[code]?code:'en'; }
@@ -24,7 +24,7 @@ const lookup={};
 for(let i=0;i<ids.length;i++)for(const alias of [words[i],latin[i],words[i].replaceAll('и','і')])lookup[alias.toLowerCase()]=ids[i];
 function parseTranscript(text) { return text.trim()?text.trim().toLowerCase().split(/[\s,;→]+/).map(word=>{if(!lookup[word])throw Error(t('unknownRune',{word}));return lookup[word];}):[]; }
 function canonical(tokens) { return tokens.map(id=>words[ids.indexOf(id)]).join(' '); }
-function displayTokens(tokens) { return tokens.map(id=>commandName(ids.indexOf(id))).join(' '); }
+function displayTokens(tokens) { return tokens.map(id=>(ids.includes(id)?commandName(ids.indexOf(id)):t('retiredCommand'))).join(' '); }
 const session=new Date().toISOString().replace(/[:.]/g,'-')+'_'+crypto.randomUUID().slice(0,8);
 let prompts=[],index=0,takes=[],last=null,active=false,starting=false,finishing=false,captureSerial=0,stream=null,context=null,node=null,source=null,mute=null,timer,blocks=[],sampleCount=0,startTime,reviewURL=null,capture=null,db=null,storageState='storageUnavailable',saving=Promise.resolve();
 function storageMessage() { $('storage-status').textContent=t(storageState);$('storage-status').classList.toggle('warning',storageState!=='storageReady'); }

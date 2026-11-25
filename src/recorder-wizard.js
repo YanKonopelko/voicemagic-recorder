@@ -45,10 +45,10 @@ async function initializeWizard() {
   const originalRender=renderPrompt,originalLock=lock,originalLocale=applyLocale,originalVerify=verify;
   renderPrompt=function(){
     originalRender();if(!prompts.length)return;
-    $('counter').textContent=t('wizardCounter',{index:index+1,total:21,part:index<14?t('wizardWords'):t('wizardSpells'),partIndex:index<14?index+1:index-13,partTotal:index<14?14:7});
-    $('hint').textContent=t(index<14?'wordHint':'joinedHint');
-    $('next').textContent=t(index===20?'wizardFinish':'next');
-    preference('wizard-index-v1:'+wizardSpeaker,String(index));wizardGate();
+    $('counter').textContent=t('wizardCounter',{index:index+1,total:prompts.length,part:index<ids.length?t('wizardWords'):t('wizardSpells'),partIndex:index<ids.length?index+1:index-ids.length+1,partTotal:index<ids.length?ids.length:7});
+    $('hint').textContent=t(index<ids.length?'wordHint':'joinedHint');
+    $('next').textContent=t(index===prompts.length-1?'wizardFinish':'next');
+    preference('wizard-index-v2:'+wizardSpeaker,String(index));wizardGate();
   };
   lock=function(value){originalLock(value);wizardGate();};
   const originalEnded=$('playback').onended;
@@ -69,7 +69,8 @@ async function initializeWizard() {
   applyLocale=function(){originalLocale();$('wizard-step').textContent=t('wizardStep',{step:{identity:1,intro:2,recording:3,thanks:4}[wizardScreen]});};
   function loadParticipant(){
     wizardSpeaker=$('speaker').value.trim();prompts=wizardSequence(wizardSpeaker);
-    index=Math.max(0,Math.min(20,Number(preference('wizard-index-v1:'+wizardSpeaker))||0));renderPrompt();
+    if(preference('wizard-index-v2:'+wizardSpeaker)===null){const old=Number(preference('wizard-index-v1:'+wizardSpeaker))||0;preference('wizard-index-v2:'+wizardSpeaker,String(old>12?old-1:old));}
+    index=Math.max(0,Math.min(prompts.length-1,Number(preference('wizard-index-v2:'+wizardSpeaker))||0));renderPrompt();
   }
   $('wizard-continue').onclick=()=>{
     if(!/^[\p{L}\p{N}_-]{1,80}$/u.test($('speaker').value.trim())){error('invalidSpeaker');return;}
@@ -84,7 +85,7 @@ async function initializeWizard() {
   $('previous').onclick=()=>{if(index>0){index--;const take=wizardTake();selectTake(take?.id);renderPrompt();}else wizardShow('intro');};
   $('next').onclick=()=>{
     if(active||starting||finishing||!wizardReviewed(prompts[index]))return;
-    if(index<20){index++;const take=wizardTake();selectTake(take?.id);renderPrompt();status('idle');}
+    if(index<prompts.length-1){index++;const take=wizardTake();selectTake(take?.id);renderPrompt();status('idle');}
     else if(prompts.every(wizardReviewed))wizardShow('thanks');
     else{index=prompts.findIndex(p=>!wizardReviewed(p));renderPrompt();}
   };
